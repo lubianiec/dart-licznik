@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dart">
+<meta name="theme-color" content="#16181c">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Dart — 501</title>
+<style>
+:root{
+  --bg:#16181c; --panel:#1e2126; --panel-2:#252930; --line:#31363d;
+  --txt:#e8eaed; --dim:#8b9199; --accent:#d9a441; --miss:#3a3f46; --bad:#c76b6b; --ok:#6fae7c;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  margin:0;background:var(--bg);color:var(--txt);
+  font:16px/1.3 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;
+  display:flex;flex-direction:column;overflow:hidden;
+  user-select:none;-webkit-user-select:none;
+  max-width:480px;margin:0 auto;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;font-variant-numeric:tabular-nums}
+input{font:inherit;color:inherit}
+.screen{display:none;flex-direction:column;flex:1;min-height:0}
+.screen.on{display:flex}
+
+/* ---------- pasek górny ---------- */
+.top{display:flex;align-items:center;gap:8px;padding:8px 12px;flex:0 0 auto}
+.top .ttl{flex:1;font-size:13px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em}
+.top .ttl b{color:var(--txt);font-size:15px;letter-spacing:0;text-transform:none}
+.icon{width:38px;height:38px;flex:0 0 auto;border-radius:10px;background:var(--panel);
+  border:1px solid var(--line);display:grid;place-items:center;font-size:16px;color:var(--dim)}
+.icon:active{background:var(--panel-2)}
+
+/* ---------- ekran startowy ---------- */
+.home{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 14px 24px}
+.logo{text-align:center;padding:18px 0 26px}
+.logo .n{font-size:56px;font-weight:600;letter-spacing:-3px;color:var(--accent);line-height:1}
+.logo .s{font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:.16em;margin-top:6px}
+.sect{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.11em;margin:20px 2px 8px}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px}
+.seg button{height:46px;border-radius:10px;background:var(--panel);border:1px solid var(--line);font-size:15px;font-weight:600;color:var(--dim)}
+.seg button.on{background:var(--accent);border-color:var(--accent);color:#16181c}
+.pl{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.pl input{
+  flex:1;height:46px;border-radius:10px;background:var(--panel);border:1px solid var(--line);
+  padding:0 14px;font-size:16px;outline:none;
+}
+.pl input:focus{border-color:var(--accent)}
+.pl .rm{width:46px;height:46px;flex:0 0 auto;border-radius:10px;background:var(--panel);border:1px solid var(--line);color:var(--bad);font-size:20px}
+.addp{width:100%;height:44px;border-radius:10px;border:1px dashed var(--line);color:var(--dim);font-size:14px;margin-top:2px}
+.addp:active{color:var(--txt);border-color:var(--accent)}
+.go{width:100%;height:58px;border-radius:12px;background:var(--accent);color:#16181c;font-size:18px;font-weight:700;letter-spacing:.02em;margin-top:24px}
+.go:active{opacity:.85}
+.alt{width:100%;height:48px;border-radius:11px;background:var(--panel);border:1px solid var(--line);font-size:15px;color:var(--dim);margin-top:9px}
+.alt:active{background:var(--panel-2);color:var(--txt)}
+
+/* ---------- tablica graczy ---------- */
+.board{flex:1 1 auto;min-height:0;overflow-y:auto;padding:0 10px;display:flex;flex-direction:column;gap:6px;justify-content:center}
+.p{
+  background:var(--panel);border:1px solid var(--line);border-radius:11px;
+  padding:9px 13px;display:flex;align-items:center;gap:11px;transition:none;
+}
+.p.act{border-color:var(--accent);background:var(--panel-2)}
+.p .nm{flex:1;min-width:0}
+.p .nm .n{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p.act .nm .n{color:var(--accent)}
+.p .nm .m{font-size:11px;color:var(--dim);margin-top:2px;font-variant-numeric:tabular-nums}
+.p .sc{font-size:34px;font-weight:600;letter-spacing:-2px;font-variant-numeric:tabular-nums;line-height:1}
+.p.act .sc{color:var(--accent)}
+.p .lg{
+  min-width:26px;height:26px;border-radius:7px;background:var(--bg);border:1px solid var(--line);
+  display:grid;place-items:center;font-size:13px;font-weight:600;color:var(--dim);padding:0 6px;
+}
+/* 3-4 graczy: ciaśniej, żeby wszystko zmieściło się na ekranie telefonu */
+.board.dense{gap:5px}
+.board.dense .p{padding:6px 12px}
+.board.dense .p .sc{font-size:28px;letter-spacing:-1.5px}
+.board.dense .p .nm .n{font-size:14px}
+.board.dense .p .nm .m{font-size:10px;margin-top:1px}
+
+/* ---------- checkout ---------- */
+.co{
+  margin:8px 10px 0;padding:8px 12px;border-radius:10px;flex:0 0 auto;
+  background:rgba(217,164,65,.1);border:1px solid rgba(217,164,65,.35);
+  display:flex;align-items:center;gap:10px;min-height:38px;
+}
+.co .k{font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:.11em;flex:0 0 auto}
+.co .v{font-size:16px;font-weight:600;letter-spacing:.02em;font-variant-numeric:tabular-nums}
+.co.none{background:var(--panel);border-color:var(--line);opacity:.5}
+.co.none .k{color:var(--dim)}
+.co.none .v{color:var(--dim);font-weight:400;font-size:13px}
+
+/* ---------- runda ---------- */
+.round{display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 12px 7px;flex:0 0 auto}
+.pip{min-width:48px;height:34px;padding:0 8px;border-radius:8px;background:var(--panel);
+  border:1px solid var(--line);display:grid;place-items:center;
+  font-size:13px;font-weight:600;color:var(--dim);font-variant-numeric:tabular-nums}
+.pip.hit{background:var(--accent);border-color:var(--accent);color:#16181c}
+.pip.miss{background:var(--miss);border-color:var(--miss);color:#767c84}
+.round .sum{margin-left:6px;font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums;min-width:70px}
+.round .sum.bust{color:var(--bad);font-weight:600}
+
+/* ---------- klawiatura ---------- */
+.pad{padding:0 10px 10px;flex:0 0 auto;display:flex;flex-direction:column;gap:6px}
+.nums{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.n{height:44px;border-radius:10px;background:var(--panel-2);border:1px solid var(--line);
+   font-size:19px;font-weight:600;letter-spacing:-.5px}
+.n:active{background:var(--accent);border-color:var(--accent);color:#16181c}
+.n.tg{color:var(--accent)}
+.n.dim{opacity:.3}
+.spec{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.s{height:44px;border-radius:10px;background:var(--panel);border:1px solid var(--line);
+   font-size:15px;font-weight:600;color:var(--dim)}
+.s:active{background:var(--panel-2)}
+.s.mult.on{background:var(--accent);border-color:var(--accent);color:#16181c}
+.s.miss:active{background:var(--miss);border-color:var(--miss);color:var(--txt)}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.mini{height:40px;border-radius:10px;background:var(--panel);border:1px solid var(--line);font-size:14px;color:var(--dim)}
+.mini:active{background:var(--panel-2);color:var(--txt)}
+.mini[disabled]{opacity:.35}
+
+/* ---------- panele ---------- */
+.sheet{position:fixed;inset:0;background:rgba(12,13,16,.86);
+  -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
+  display:none;flex-direction:column;z-index:10;
+  padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+.sheet.on{display:flex}
+.sheet h2{margin:0;padding:16px 16px 10px;font-size:14px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.1em;color:var(--dim);
+  display:flex;justify-content:space-between;align-items:center}
+.sheet h2 button{font-size:15px;color:var(--accent);text-transform:none;letter-spacing:0}
+.sheet .body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 12px 20px;max-width:480px;width:100%;margin:0 auto}
+.hint{color:var(--dim);font-size:13px;padding:14px 4px 6px;line-height:1.5}
+.targets{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+.tbtn{height:52px;border-radius:10px;background:var(--panel);border:1px solid var(--line);font-size:18px;font-weight:600}
+.tbtn.sel{background:var(--accent);border-color:var(--accent);color:#16181c}
+.tbtn.wide{grid-column:span 5;font-size:16px}
+
+/* ---------- zwycięstwo ---------- */
+.win{text-align:center;padding:18px 8px 6px}
+.win .big{font-size:30px;font-weight:600;letter-spacing:-1px;color:var(--accent)}
+.win .sub{font-size:13px;color:var(--dim);margin-top:6px}
+.stab{width:100%;border-collapse:collapse;margin-top:16px;font-variant-numeric:tabular-nums}
+.stab th{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;font-weight:500;padding:7px 6px;text-align:right;border-bottom:1px solid var(--line)}
+.stab th:first-child{text-align:left}
+.stab td{font-size:15px;padding:10px 6px;text-align:right;border-bottom:1px solid var(--line)}
+.stab td:first-child{text-align:left;font-weight:600}
+.stab tr.w td{color:var(--accent)}
+
+/* ---------- statystyki treningu ---------- */
+.stats{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;justify-content:center;padding:0 12px;gap:10px}
+.hero{text-align:center}
+.hero .pct{font-size:clamp(40px,13vw,64px);font-weight:600;letter-spacing:-2.5px;line-height:1;font-variant-numeric:tabular-nums}
+.hero .lbl{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.11em;margin-top:5px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.cell{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:7px 10px;text-align:center}
+.cell .v{font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+.cell .k{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.07em;margin-top:1px}
+.item{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:11px 13px;margin-bottom:7px;display:flex;align-items:center;gap:13px}
+.item .tg{width:44px;height:44px;flex:0 0 auto;border-radius:10px;background:var(--panel-2);display:grid;place-items:center;font-size:16px;font-weight:600;color:var(--accent)}
+.item .meta{flex:1;min-width:0}
+.item .meta .d{font-size:11px;color:var(--dim)}
+.item .meta .s2{font-size:14px;margin-top:2px;font-variant-numeric:tabular-nums}
+.item .big{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-1px}
+.empty{color:var(--dim);text-align:center;padding:46px 20px;font-size:14px;line-height:1.6}
+</style>
+</head>
+<body>
+
+<!-- ══════════ EKRAN STARTOWY ══════════ -->
+<div class="screen on" id="scHome">
+  <div class="home">
+    <div class="logo"><div class="n">501</div><div class="s">licznik darta</div></div>
+
+    <div class="sect">Gra</div>
+    <div class="seg" id="segStart">
+      <button data-v="301">301</button><button data-v="501" class="on">501</button><button data-v="701">701</button>
+    </div>
+
+    <div class="sect">Wyjście</div>
+    <div class="seg" id="segOut">
+      <button data-v="1" class="on">Na double</button><button data-v="0">Dowolne</button>
+    </div>
+
+    <div class="sect">Do ilu wygranych legów</div>
+    <div class="seg" id="segLegs">
+      <button data-v="1" class="on">1</button><button data-v="2">2</button><button data-v="3">3</button><button data-v="5">5</button>
+    </div>
+
+    <div class="sect">Gracze <span id="pCount" style="float:right;text-transform:none;letter-spacing:0"></span></div>
+    <div id="plist"></div>
+    <button class="addp" id="addP">+ Dodaj gracza</button>
+
+    <button class="go" id="startGame">ZACZNIJ GRĘ</button>
+    <button class="alt" id="goTrain">Trening celności →</button>
+  </div>
+</div>
+
+<!-- ══════════ EKRAN GRY ══════════ -->
+<div class="screen" id="scGame">
+  <div class="top">
+    <div class="ttl"><b id="gTitle">501</b> <span id="gLeg"></span></div>
+    <button class="icon" id="gMenu">☰</button>
+  </div>
+  <div class="board" id="board"></div>
+  <div class="co" id="co"><span class="k">Wyjście</span><span class="v" id="coV">—</span></div>
+  <div class="round" id="gRound"></div>
+  <div class="pad">
+    <div class="nums" id="gNums"></div>
+    <div class="spec">
+      <button class="s mult" data-m="2">×2</button>
+      <button class="s mult" data-m="3">×3</button>
+      <button class="s" data-b="25">25</button>
+      <button class="s" data-b="50">BULL</button>
+      <button class="s miss" data-b="0">PUDŁO</button>
+    </div>
+    <div class="acts">
+      <button class="mini" id="gUndo">↩ Cofnij</button>
+      <button class="mini" id="gEnd">■ Zakończ turę</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ EKRAN TRENINGU ══════════ -->
+<div class="screen" id="scTrain">
+  <div class="top">
+    <button class="icon" id="tBack">‹</button>
+    <div class="ttl" style="flex:1"><b>Trening celności</b></div>
+    <button class="icon" id="tHist">☰</button>
+  </div>
+  <div style="padding:0 12px 4px">
+    <button class="p" id="pickTarget" style="width:100%;justify-content:space-between">
+      <span class="nm"><span class="n" id="tName">20</span></span>
+      <span class="lg" style="width:auto;padding:0 10px">zmień pole</span>
+    </button>
+  </div>
+  <div class="stats">
+    <div class="hero"><div class="pct" id="hPct">—</div><div class="lbl" id="hLbl">trafień w pole 20</div></div>
+    <div class="grid">
+      <div class="cell"><div class="v" id="sTre">0</div><div class="k" id="kTre">trebli</div></div>
+      <div class="cell"><div class="v" id="sAvg">0.0</div><div class="k">śr. / lotkę</div></div>
+      <div class="cell"><div class="v" id="sR3">0.0</div><div class="k">śr. / rundę</div></div>
+    </div>
+  </div>
+  <div class="round" id="tRound"></div>
+  <div class="pad">
+    <div class="nums" id="tNums"></div>
+    <div class="spec">
+      <button class="s mult" data-m="2">×2</button>
+      <button class="s mult" data-m="3">×3</button>
+      <button class="s" data-b="25">25</button>
+      <button class="s" data-b="50">BULL</button>
+      <button class="s miss" data-b="0">PUDŁO</button>
+    </div>
+    <div class="acts">
+      <button class="mini" id="tUndo">↩ Cofnij</button>
+      <button class="mini" id="tFinish">■ Zakończ serię</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ PANELE ══════════ -->
+<div class="sheet" id="shWin">
+  <h2>Koniec <button data-close>Zamknij</button></h2>
+  <div class="body" id="winBody"></div>
+</div>
+
+<div class="sheet" id="shMenu">
+  <h2>Menu <button data-close>Wróć do gry</button></h2>
+  <div class="body">
+    <button class="alt" id="mNewLeg">Zacznij leg od nowa</button>
+    <button class="alt" id="mStats">Statystyki meczu</button>
+    <button class="alt" id="mQuit" style="color:var(--bad)">Zakończ mecz i wróć</button>
+    <div class="hint">Cofnij (na dole ekranu) usuwa ostatnią lotkę — działa też po zmianie gracza.</div>
+  </div>
+</div>
+
+<div class="sheet" id="shTarget">
+  <h2>Trenowane pole <button data-close>Gotowe</button></h2>
+  <div class="body"><div class="targets" id="tGrid"></div>
+    <div class="hint">Względem tego pola liczony jest procent trafień.</div></div>
+</div>
+
+<div class="sheet" id="shHist">
+  <h2>Historia treningów <button data-close>Zamknij</button></h2>
+  <div class="body" id="histBody"></div>
+</div>
+
+<script>
+'use strict';
+
+/* ════════════════════════════════════════════════
+   POLA TARCZY + WYLICZANIE WYJŚĆ (CHECKOUT)
+   ════════════════════════════════════════════════ */
+const FIELDS = [];
+for (let i=1;i<=20;i++){
+  FIELDS.push({l:''+i,      p:i,   d:false});
+  FIELDS.push({l:'D'+i,     p:2*i, d:true });
+  FIELDS.push({l:'T'+i,     p:3*i, d:false});
+}
+FIELDS.push({l:'25',p:25,d:false});
+FIELDS.push({l:'BULL',p:50,d:true});
+const DOUBLES = FIELDS.filter(f=>f.d);
+
+/* Im wyższa wartość, tym chętniej kończymy na tym doublu
+   (D20/D16 dzielą się dalej przy pudle → preferowane przez graczy). */
+const DPREF = {40:100, 32:96, 16:90, 8:86, 4:82, 2:78, 24:74, 20:72, 12:70, 36:66, 28:64, 50:60};
+const dpref = p => DPREF[p] !== undefined ? DPREF[p] : (p%4===0 ? 55 : 40);
+
+/* Jak chętnie gracz celuje w to pole PO DRODZE (nie na wyjściu).
+   Bull i małe double w środku serii to nienaturalne rzuty — karane. */
+function ease(f){
+  if (f.l === 'BULL') return -500;                       // bull po drodze = nie
+  if (f.d)            return f.p*0.4 - 100;              // double po drodze = nie
+  if (f.l[0] === 'T') return f.p*2 + (f.p===60 ? 25 : 0);// treble tak, T20 najchętniej
+  return f.p*0.9 - (f.p < 5 ? 30 : 0);                   // w single 1-4 nikt nie celuje
+}
+
+/* Zwraca np. ['T20','T20','BULL'] albo null gdy wyjścia nie ma. */
+function checkout(n, maxDarts){
+  n = +n;
+  if (n<2 || n>170) return null;
+  const best = {score:-1e9, path:null};
+  const consider = (path)=>{
+    const dbl = path[path.length-1];
+    // mniej lotek >> lepszy double na koniec >> naturalna droga do niego
+    let s = (4-path.length)*100000 + dpref(dbl.p)*3;
+    for (let i=0;i<path.length-1;i++) s += ease(path[i]);
+    if (s > best.score){
+      best.score = s;
+      // największy rzut rzuca się pierwszy, double zostaje na koniec
+      best.path = path.slice(0,-1).sort((a,b)=>b.p-a.p).concat(dbl);
+    }
+  };
+  for (const d of DOUBLES){                       // 1 lotka
+    if (d.p === n) consider([d]);
+  }
+  if (maxDarts >= 2) for (const a of FIELDS){
+    const r = n - a.p; if (r < 2) continue;
+    for (const d of DOUBLES) if (d.p === r) consider([a,d]);
+  }
+  if (maxDarts >= 3) for (const a of FIELDS){
+    const r1 = n - a.p; if (r1 < 2) continue;
+    for (const b of FIELDS){
+      const r2 = r1 - b.p; if (r2 < 2) continue;
+      for (const d of DOUBLES) if (d.p === r2) consider([a,b,d]);
+    }
+  }
+  return best.path ? best.path.map(f=>f.l) : null;
+}
+
+/* ════════════════════════════════════════════════
+   WSPÓLNE: KLAWIATURA
+   ════════════════════════════════════════════════ */
+let mult = 1;   // aktywny mnożnik
+
+function setMult(m){
+  mult = m;
+  document.querySelectorAll('.s.mult').forEach(b=>b.classList.toggle('on', +b.dataset.m === m));
+}
+
+function buildPad(host, onThrow){
+  for (let i=1;i<=20;i++){
+    const b = document.createElement('button');
+    b.className='n'; b.dataset.n=i; b.textContent=i;
+    b.onclick = ()=>onThrow(i, mult);
+    host.appendChild(b);
+  }
+  const pad = host.closest('.pad');
+  pad.querySelectorAll('.s.mult').forEach(b=>{
+    b.onclick = ()=> setMult(mult === +b.dataset.m ? 1 : +b.dataset.m);
+  });
+  pad.querySelector('[data-b="25"]').onclick = ()=>onThrow(25,1);
+  pad.querySelector('[data-b="50"]').onclick = ()=>onThrow(25,2);
+  pad.querySelector('[data-b="0"]').onclick  = ()=>onThrow(0,1);
+}
+
+const label = t => t.num===0 ? '—'
+              : t.num===25 ? (t.mult===2?'BULL':'25')
+              : (t.mult===3?'T':t.mult===2?'D':'') + t.num;
+
+function pips(host, list, sumTxt, bust){
+  host.innerHTML='';
+  for (let i=0;i<3;i++){
+    const t = list[i], d = document.createElement('div');
+    d.className = 'pip' + (t ? (t.hit===false ? ' miss' : ' hit') : '');
+    d.textContent = t ? label(t) : '·';
+    host.appendChild(d);
+  }
+  const s = document.createElement('div');
+  s.className = 'sum' + (bust ? ' bust' : '');
+  s.textContent = sumTxt;
+  host.appendChild(s);
+}
+
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on', s.id===id));
+}
+document.querySelectorAll('[data-close]').forEach(b=>{
+  b.onclick = ()=> b.closest('.sheet').classList.remove('on');
+});
+const sheet = (id,on)=> document.getElementById(id).classList.toggle('on', on);
+
+/* ════════════════════════════════════════════════
+   EKRAN STARTOWY
+   ════════════════════════════════════════════════ */
+const CFG = 'dart-cfg';
+let cfg = Object.assign({start:501, dbl:1, legs:1, names:['Gracz 1','Gracz 2']},
+                        JSON.parse(localStorage.getItem(CFG) || '{}'));
+
+function seg(id, key){
+  const host = document.getElementById(id);
+  host.querySelectorAll('button').forEach(b=>{
+    b.classList.toggle('on', +b.dataset.v === cfg[key]);
+    b.onclick = ()=>{
+      cfg[key] = +b.dataset.v;
+      host.querySelectorAll('button').forEach(x=>x.classList.toggle('on', x===b));
+      saveCfg();
+    };
+  });
+}
+function saveCfg(){ localStorage.setItem(CFG, JSON.stringify(cfg)); }
+
+function renderPlayers(){
+  const host = document.getElementById('plist');
+  host.innerHTML='';
+  cfg.names.forEach((nm,i)=>{
+    const row = document.createElement('div');
+    row.className='pl';
+    const inp = document.createElement('input');
+    inp.value = nm; inp.placeholder = 'Gracz '+(i+1); inp.maxLength = 14;
+    inp.oninput = ()=>{ cfg.names[i] = inp.value; saveCfg(); };
+    row.appendChild(inp);
+    if (cfg.names.length > 1){
+      const rm = document.createElement('button');
+      rm.className='rm'; rm.textContent='−';
+      rm.onclick = ()=>{ cfg.names.splice(i,1); saveCfg(); renderPlayers(); };
+      row.appendChild(rm);
+    }
+    host.appendChild(row);
+  });
+  document.getElementById('addP').style.display = cfg.names.length>=4 ? 'none' : '';
+  document.getElementById('pCount').textContent = cfg.names.length + '/4';
+}
+document.getElementById('addP').onclick = ()=>{
+  if (cfg.names.length<4){ cfg.names.push('Gracz '+(cfg.names.length+1)); saveCfg(); renderPlayers(); }
+};
+seg('segStart','start'); seg('segOut','dbl'); seg('segLegs','legs'); renderPlayers();
+
+document.getElementById('goTrain').onclick = ()=>{ show('scTrain'); tRender(); };
+document.getElementById('tBack').onclick   = ()=> show('scHome');
+document.getElementById('startGame').onclick = newMatch;
+
+/* ════════════════════════════════════════════════
+   GRA 501
+   ════════════════════════════════════════════════ */
+let G = null;
+
+function newMatch(){
+  G = {
+    start: cfg.start, dbl: !!cfg.dbl, need: cfg.legs,
+    players: cfg.names.map((n,i)=>({
+      name: (n||'').trim() || 'Gracz '+(i+1),
+      score: cfg.start, legs:0, darts:0, scored:0, best:0, n180:0
+    })),
+    turn: 0, legStarter: 0, leg: 1,
+    round: [],          // {num,mult,pts}
+    before: cfg.start,  // wynik gracza przed rundą (do busta i cofania)
+    log: [],            // pełna historia lotek: {pi, num, mult, pts, scoreBefore, bust}
+    done: false
+  };
+  show('scGame');
+  setMult(1);
+  gRender();
+}
+
+const cur = () => G.players[G.turn];
+
+/* ---------- rejestracja lotki ---------- */
+function gThrow(num, m){
+  if (G.done || G.round.length>=3) return;
+  const p = cur();
+  const pts = num*m;
+  const isDouble = (num===25 && m===2) || (num!==25 && m===2);
+  const rest = p.score - pts;
+
+  const t = {num, mult:m, pts, hit:true};
+  G.round.push(t);
+  p.score = rest;
+  p.darts++;
+  setMult(1);
+
+  // BUST: poniżej zera, dokładnie 1 przy double-out, albo zero bez double
+  const bust = rest < 0 || (G.dbl && (rest === 1 || (rest === 0 && !isDouble)));
+  if (bust){ gBust(); return; }
+
+  if (rest === 0){ gLegWon(); return; }
+  if (G.round.length === 3) endTurn();
+  gRender();
+}
+
+function endTurn(){
+  const p = cur();
+  const sum = G.round.reduce((a,t)=>a+t.pts,0);
+  p.scored += sum;
+  if (sum > p.best) p.best = sum;
+  if (sum === 180) p.n180++;
+  G.log.push({pi:G.turn, round:G.round.slice(), before:G.before, bust:false});
+  G.round = [];
+  G.turn = (G.turn+1) % G.players.length;
+  G.before = cur().score;
+}
+
+function gBust(){
+  const p = cur();
+  p.darts += (3 - G.round.length);          // niewykorzystane lotki liczą się do średniej
+  const shown = G.round.slice();
+  p.score = G.before;                        // wynik wraca
+  G.log.push({pi:G.turn, round:shown, before:G.before, bust:true});
+  gRender(true, shown);
+  setTimeout(()=>{
+    G.round = [];
+    G.turn = (G.turn+1) % G.players.length;
+    G.before = cur().score;
+    gRender();
+  }, 1100);
+}
+
+function gLegWon(){
+  const p = cur();
+  const sum = G.round.reduce((a,t)=>a+t.pts,0);
+  p.scored += sum;
+  if (sum > p.best) p.best = sum;
+  if (sum === 180) p.n180++;
+  p.legs++;
+  G.log.push({pi:G.turn, round:G.round.slice(), before:G.before, bust:false});
+  G.round = [];
+
+  const matchOver = p.legs >= G.need;
+  showWin(p, matchOver);
+
+  if (matchOver){ G.done = true; }
+  else {
+    G.leg++;
+    G.legStarter = (G.legStarter+1) % G.players.length;
+    G.turn = G.legStarter;
+    G.players.forEach(x=>x.score = G.start);
+    G.before = cur().score;
+  }
+  gRender();
+}
+
+/* ---------- render gry ---------- */
+function gRender(bust, shown){
+  document.getElementById('gTitle').textContent = G.start;
+  document.getElementById('gLeg').textContent =
+    (G.need>1 ? '· leg '+G.leg+' (do '+G.need+')' : '') + (G.dbl ? ' · na double' : '');
+
+  const board = document.getElementById('board');
+  board.className = 'board' + (G.players.length >= 3 ? ' dense' : '');
+  board.innerHTML = '';
+  G.players.forEach((p,i)=>{
+    const left = 3 - (i===G.turn ? G.round.length : 0);
+    const avg = p.darts ? (p.scored/p.darts*3) : 0;
+    const el = document.createElement('div');
+    el.className = 'p' + (i===G.turn && !G.done ? ' act' : '');
+    // przy 3-4 graczach szczegóły tylko przy aktywnym — inaczej nie mieści się na telefonie
+    const showMeta = G.players.length < 3 || i === G.turn;
+    el.innerHTML =
+      '<div class="nm"><div class="n">'+(i===G.turn&&!G.done?'▸ ':'')+esc(p.name)+'</div>'
+      + (showMeta ? '<div class="m">śr. '+avg.toFixed(1)+' · lotek '+p.darts+(p.best?' · max '+p.best:'')+(p.n180?' · '+p.n180+'×180':'')+'</div>' : '')
+      + '</div>'
+      + (G.need>1 ? '<div class="lg">'+p.legs+'</div>' : '')
+      + '<div class="sc">'+p.score+'</div>';
+    board.appendChild(el);
+  });
+
+  // podpowiedź wyjścia dla aktywnego gracza
+  const co = document.getElementById('co'), coV = document.getElementById('coV');
+  const p = cur();
+  const dartsLeft = 3 - G.round.length;
+  const path = G.done ? null : (G.dbl ? checkout(p.score, dartsLeft) : straightOut(p.score, dartsLeft));
+  if (path){ co.className='co'; coV.textContent = path.join('   '); }
+  else {
+    co.className='co none';
+    coV.textContent = G.done ? 'koniec meczu'
+      : p.score>170 ? 'zejdź poniżej 170' : 'z tego wyniku nie ma wyjścia w tej turze';
+  }
+
+  const sum = (shown||G.round).reduce((a,t)=>a+t.pts,0);
+  pips(document.getElementById('gRound'), shown||G.round,
+       bust ? 'PRZEKROCZONE' : ((shown||G.round).length ? sum+' pkt' : 'zostało '+p.score),
+       bust);
+
+  // wygaszaj cyfry, których nie da się już użyć bez przekroczenia
+  document.querySelectorAll('#gNums .n').forEach(b=>{
+    b.classList.toggle('dim', !G.done && (+b.dataset.n) > p.score);
+  });
+  document.getElementById('gUndo').disabled = !G.log.length && !G.round.length;
+}
+
+/* wyjście bez wymogu double (tryb „dowolne") */
+function straightOut(n, maxDarts){
+  if (n<1 || n>180) return null;
+  for (const a of FIELDS) if (a.p===n) return [a.l];
+  if (maxDarts>=2) for (const a of FIELDS){ const r=n-a.p; if(r<1)continue;
+    for (const b of FIELDS) if (b.p===r) return [a.l,b.l]; }
+  if (maxDarts>=3) for (const a of FIELDS){ const r1=n-a.p; if(r1<1)continue;
+    for (const b of FIELDS){ const r2=r1-b.p; if(r2<1)continue;
+      for (const c of FIELDS) if (c.p===r2) return [a.l,b.l,c.l]; } }
+  return null;
+}
+
+const esc = s => String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- cofanie ---------- */
+document.getElementById('gUndo').onclick = ()=>{
+  if (G.done) return;
+  if (G.round.length){
+    const t = G.round.pop();
+    cur().score += t.pts; cur().darts--;
+  } else if (G.log.length){
+    const last = G.log.pop();
+    G.turn = last.pi;
+    const p = cur();
+    if (last.bust){ p.darts -= 3; }
+    else {
+      const sum = last.round.reduce((a,t)=>a+t.pts,0);
+      p.scored -= sum; p.darts -= last.round.length;
+      if (sum===180) p.n180--;
+      if (p.score===0 || p.legs>0 && last.before-sum===0){ /* cofnięcie wygranego lega */ }
+    }
+    p.score = last.before;
+    G.before = last.before;
+    G.round = last.round.slice(0,-1);
+    G.round.forEach(t=>{ p.score -= t.pts; });
+    p.darts += G.round.length;
+  }
+  setMult(1);
+  gRender();
+};
+
+document.getElementById('gEnd').onclick = ()=>{
+  if (G.done || !G.round.length) return;
+  while (G.round.length < 3) { G.round.push({num:0,mult:1,pts:0,hit:false}); cur().darts++; }
+  endTurn(); gRender();
+};
+
+document.getElementById('gMenu').onclick = ()=> sheet('shMenu', true);
+document.getElementById('mQuit').onclick = ()=>{ sheet('shMenu',false); show('scHome'); };
+document.getElementById('mNewLeg').onclick = ()=>{
+  sheet('shMenu',false);
+  G.players.forEach(p=>p.score=G.start); G.round=[]; G.turn=G.legStarter;
+  G.before=cur().score; G.done=false; gRender();
+};
+document.getElementById('mStats').onclick = ()=>{ sheet('shMenu',false); showWin(null,false); };
+
+/* ---------- ekran wyniku ---------- */
+function showWin(winner, matchOver){
+  const b = document.getElementById('winBody');
+  const rows = G.players.map(p=>{
+    const avg = p.darts ? (p.scored/p.darts*3) : 0;
+    return '<tr class="'+(winner&&p===winner?'w':'')+'"><td>'+esc(p.name)+'</td>'
+         + '<td>'+p.legs+'</td><td>'+avg.toFixed(1)+'</td><td>'+p.best+'</td><td>'+p.n180+'</td></tr>';
+  }).join('');
+  b.innerHTML =
+    (winner ? '<div class="win"><div class="big">'+esc(winner.name)+' '
+      + (matchOver?'wygrywa mecz':'bierze leg '+(G.leg))+'</div>'
+      + '<div class="sub">'+(matchOver?'':'następny leg zaczyna '+esc(G.players[(G.legStarter+1)%G.players.length].name))+'</div></div>' : '')
+    + '<table class="stab"><tr><th>Gracz</th><th>Legi</th><th>Śr./3</th><th>Max</th><th>180</th></tr>'+rows+'</table>'
+    + '<div class="hint">Śr./3 = średnia punktów na trzy lotki — główna miara formy w darcie.</div>'
+    + (matchOver ? '<button class="go" id="wAgain">Zagraj jeszcze raz</button>' : '');
+  sheet('shWin', true);
+  const again = document.getElementById('wAgain');
+  if (again) again.onclick = ()=>{ sheet('shWin',false); newMatch(); };
+}
+
+buildPad(document.getElementById('gNums'), gThrow);
+
+/* ════════════════════════════════════════════════
+   TRENING CELNOŚCI
+   ════════════════════════════════════════════════ */
+const KEY='dart-licznik-v1';
+let target = +(localStorage.getItem(KEY+'-target') || 20);
+let throws = [];
+let history = (()=>{ try{ return JSON.parse(localStorage.getItem(KEY))||[] }catch(e){ return [] } })();
+const saveHist = ()=> localStorage.setItem(KEY, JSON.stringify(history.slice(0,200)));
+const isBull = ()=> target===25;
+
+function tThrow(num,m){
+  const hit = isBull() ? num===25 : num===target;
+  throws.push({num, mult:m, pts:num*m, hit, tre: hit && (isBull()? m===2 : m===3)});
+  setMult(1); tRender();
+}
+
+function tStats(list){
+  const n=list.length, hits=list.filter(t=>t.hit).length, tre=list.filter(t=>t.tre).length;
+  const pts=list.reduce((a,t)=>a+t.pts,0);
+  let best=0,c=0; for(const t of list){ c=t.hit?c+1:0; if(c>best)best=c; }
+  return {n,hits,tre,pts,best, pct:n?Math.round(hits/n*100):null,
+          trePct:n?Math.round(tre/n*100):0, avg:n?pts/n:0, r3:n?pts/n*3:0};
+}
+
+function tRender(){
+  const s = tStats(throws);
+  document.getElementById('tName').textContent = isBull()?'BULL / 25':'pole '+target;
+  document.getElementById('hPct').textContent = s.pct===null?'—':s.pct+'%';
+  document.getElementById('hLbl').textContent = isBull()?'trafień w bull / 25':'trafień w pole '+target;
+  document.getElementById('kTre').textContent = isBull()?'bulli (50)':'trebli';
+  document.getElementById('sTre').textContent = s.tre + (s.n?' · '+s.trePct+'%':'');
+  document.getElementById('sAvg').textContent = s.avg.toFixed(1);
+  document.getElementById('sR3').textContent  = s.r3.toFixed(1);
+  document.querySelectorAll('#tNums .n').forEach(b=>b.classList.toggle('tg', !isBull() && +b.dataset.n===target));
+  const start = Math.floor(throws.length/3)*3, c = throws.slice(start,start+3);
+  pips(document.getElementById('tRound'), c,
+       c.length ? c.reduce((a,t)=>a+t.pts,0)+' pkt' : 'runda '+(Math.floor(throws.length/3)+1));
+  document.getElementById('tUndo').disabled = !throws.length;
+}
+
+document.getElementById('tUndo').onclick = ()=>{ throws.pop(); tRender(); };
+document.getElementById('tFinish').onclick = tFinish;
+function tFinish(){
+  if (throws.length){
+    const s = tStats(throws);
+    history.unshift({at:Date.now(), target, n:s.n, hits:s.hits, tre:s.tre,
+                     pts:s.pts, pct:s.pct, avg:+s.avg.toFixed(1), best:s.best});
+    saveHist();
+  }
+  throws=[]; setMult(1); tRender();
+}
+
+document.getElementById('pickTarget').onclick = ()=>{
+  const g = document.getElementById('tGrid'); g.innerHTML='';
+  const mk=(v,l,w)=>{
+    const b=document.createElement('button');
+    b.className='tbtn'+(target===v?' sel':'')+(w?' wide':''); b.textContent=l;
+    b.onclick=()=>{ if(v!==target){ tFinish(); target=v; localStorage.setItem(KEY+'-target',v); tRender(); }
+                    sheet('shTarget',false); };
+    g.appendChild(b);
+  };
+  for(let i=20;i>=1;i--) mk(i,String(i));
+  mk(25,'BULL / 25',true);
+  sheet('shTarget',true);
+};
+
+document.getElementById('tHist').onclick = ()=>{
+  const b=document.getElementById('histBody');
+  if(!history.length){
+    b.innerHTML='<div class="empty">Brak zapisanych serii.<br>Rzuć kilka lotek i naciśnij „Zakończ serię”.</div>';
+  } else {
+    b.innerHTML = history.map(h=>{
+      const d=new Date(h.at);
+      const dt=d.toLocaleDateString('pl-PL',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});
+      return '<div class="item"><div class="tg">'+(h.target===25?'B':h.target)+'</div>'
+        +'<div class="meta"><div class="d">'+dt+'</div><div class="s2">'+h.hits+'/'+h.n+' · '
+        +(h.target===25?'bulli ':'trebli ')+h.tre+' · śr. '+h.avg+'</div></div>'
+        +'<div class="big">'+h.pct+'%</div></div>';
+    }).join('')
+    +'<div class="hint" style="text-align:center"><button id="clr" style="color:var(--bad)">Wyczyść historię</button></div>';
+    document.getElementById('clr').onclick=()=>{
+      if(confirm('Usunąć całą historię treningów?')){ history=[]; saveHist(); document.getElementById('tHist').click(); }
+    };
+  }
+  sheet('shHist',true);
+};
+
+buildPad(document.getElementById('tNums'), tThrow);
+tRender();
+
+/* ---------- ekran nie gaśnie w trakcie gry ---------- */
+let lock=null;
+async function keepAwake(){ try{ if('wakeLock' in navigator && !lock) lock=await navigator.wakeLock.request('screen'); }catch(e){} }
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'){ lock=null; keepAwake(); } });
+document.body.addEventListener('click', keepAwake, {once:true});
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
