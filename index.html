@@ -92,10 +92,27 @@ input{font:inherit;color:inherit}
   display:flex;align-items:center;gap:10px;min-height:38px;
 }
 .co .k{font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:.11em;flex:0 0 auto}
-.co .v{font-size:16px;font-weight:600;letter-spacing:.02em;font-variant-numeric:tabular-nums}
-.co.none{background:var(--panel);border-color:var(--line);opacity:.5}
+.co .v{font-size:16px;font-weight:600;letter-spacing:.02em;font-variant-numeric:tabular-nums;text-align:left}
+.co .more{margin-left:auto;font-size:11px;color:var(--dim);flex:0 0 auto;white-space:nowrap}
+.co:active{background:rgba(217,164,65,.2)}
+.co.setup{background:var(--panel-2);border-color:var(--line)}
+.co.setup .k{color:var(--dim)}
+.co.none{background:var(--panel);border-color:var(--line);opacity:.55}
 .co.none .k{color:var(--dim)}
 .co.none .v{color:var(--dim);font-weight:400;font-size:13px}
+
+/* lista dróg wyjścia */
+.way{display:flex;align-items:center;gap:8px;padding:11px 12px;border-bottom:1px solid var(--line)}
+.way .d{display:flex;gap:5px;flex:1;flex-wrap:wrap}
+.way .f{
+  min-width:44px;padding:5px 9px;border-radius:7px;background:var(--panel-2);
+  border:1px solid var(--line);font-size:14px;font-weight:600;text-align:center;font-variant-numeric:tabular-nums;
+}
+.way .f.dbl{background:var(--accent);border-color:var(--accent);color:#16181c}
+.way .c{font-size:11px;color:var(--dim);flex:0 0 auto}
+.way.best .f{border-color:rgba(217,164,65,.5)}
+.wayhd{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;padding:16px 2px 6px}
+.big-n{font-size:40px;font-weight:600;letter-spacing:-2px;color:var(--accent);font-variant-numeric:tabular-nums}
 
 /* ---------- runda ---------- */
 .round{display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 12px 7px;flex:0 0 auto}
@@ -210,7 +227,9 @@ input{font:inherit;color:inherit}
     <button class="icon" id="gMenu">☰</button>
   </div>
   <div class="board" id="board"></div>
-  <div class="co" id="co"><span class="k">Wyjście</span><span class="v" id="coV">—</span></div>
+  <button class="co" id="co">
+    <span class="k" id="coK">Wyjście</span><span class="v" id="coV">—</span><span class="more" id="coMore"></span>
+  </button>
   <div class="round" id="gRound"></div>
   <div class="pad">
     <div class="nums" id="gNums"></div>
@@ -272,6 +291,11 @@ input{font:inherit;color:inherit}
   <div class="body" id="winBody"></div>
 </div>
 
+<div class="sheet" id="shOuts">
+  <h2>Możliwości skończenia <button data-close>Zamknij</button></h2>
+  <div class="body" id="outsBody"></div>
+</div>
+
 <div class="sheet" id="shMenu">
   <h2>Menu <button data-close>Wróć do gry</button></h2>
   <div class="body">
@@ -319,41 +343,77 @@ const dpref = p => DPREF[p] !== undefined ? DPREF[p] : (p%4===0 ? 55 : 40);
 function ease(f){
   if (f.l === 'BULL') return -500;                       // bull po drodze = nie
   if (f.d)            return f.p*0.4 - 100;              // double po drodze = nie
-  if (f.l[0] === 'T') return f.p*2 + (f.p===60 ? 25 : 0);// treble tak, T20 najchętniej
+  if (f.l[0] === 'T') return f.p*1.2 + (f.p===60 ? 40 : 0);// treble tak, ale T20 to nawyk
   return f.p*0.9 - (f.p < 5 ? 30 : 0);                   // w single 1-4 nikt nie celuje
 }
 
-/* Zwraca np. ['T20','T20','BULL'] albo null gdy wyjścia nie ma. */
-function checkout(n, maxDarts){
+/* Wyniki, z których NIE da się wyjść nawet trzema lotkami — nie wolno na nich zostać. */
+const BOGEY = new Set([169,168,166,165,163,162,159]);
+
+/* Wszystkie sposoby wyjścia z `n` w `maxDarts` lotkach, od najlepszego.
+   Zwraca [{path:['T20','T20','BULL'], s:ranking}, ...]. Wyniki cache'owane. */
+const _outs = new Map();
+function outs(n, maxDarts){
   n = +n;
-  if (n<2 || n>170) return null;
-  const best = {score:-1e9, path:null};
-  const consider = (path)=>{
+  const key = n+'/'+maxDarts;
+  if (_outs.has(key)) return _outs.get(key);
+  const res = [], seen = new Set();
+  const add = (path)=>{
     const dbl = path[path.length-1];
+    const k = path.slice(0,-1).map(f=>f.l).sort().join(',')+'|'+dbl.l;
+    if (seen.has(k)) return;
+    seen.add(k);
     // mniej lotek >> lepszy double na koniec >> naturalna droga do niego
     let s = (4-path.length)*100000 + dpref(dbl.p)*3;
     for (let i=0;i<path.length-1;i++) s += ease(path[i]);
-    if (s > best.score){
-      best.score = s;
-      // największy rzut rzuca się pierwszy, double zostaje na koniec
-      best.path = path.slice(0,-1).sort((a,b)=>b.p-a.p).concat(dbl);
-    }
+    // największy rzut rzuca się pierwszy, double zostaje na koniec
+    res.push({s, path: path.slice(0,-1).sort((a,b)=>b.p-a.p).concat(dbl).map(f=>f.l)});
   };
-  for (const d of DOUBLES){                       // 1 lotka
-    if (d.p === n) consider([d]);
-  }
-  if (maxDarts >= 2) for (const a of FIELDS){
-    const r = n - a.p; if (r < 2) continue;
-    for (const d of DOUBLES) if (d.p === r) consider([a,d]);
-  }
-  if (maxDarts >= 3) for (const a of FIELDS){
-    const r1 = n - a.p; if (r1 < 2) continue;
-    for (const b of FIELDS){
-      const r2 = r1 - b.p; if (r2 < 2) continue;
-      for (const d of DOUBLES) if (d.p === r2) consider([a,b,d]);
+  if (n>=2 && n<=170){
+    for (const d of DOUBLES) if (d.p === n) add([d]);
+    if (maxDarts >= 2) for (const a of FIELDS){
+      const r = n - a.p; if (r < 2) continue;
+      for (const d of DOUBLES) if (d.p === r) add([a,d]);
+    }
+    if (maxDarts >= 3) for (const a of FIELDS){
+      const r1 = n - a.p; if (r1 < 2) continue;
+      for (const b of FIELDS){
+        const r2 = r1 - b.p; if (r2 < 2) continue;
+        for (const d of DOUBLES) if (d.p === r2) add([a,b,d]);
+      }
     }
   }
-  return best.path ? best.path.map(f=>f.l) : null;
+  res.sort((a,b)=>b.s-a.s);
+  const top = res.slice(0,12);
+  _outs.set(key, top);
+  return top;
+}
+
+/* Najlepsza droga wyjścia albo null. */
+const checkout = (n, maxDarts)=> (outs(n, maxDarts)[0] || {}).path || null;
+
+/* Gdy w tej turze skończyć się nie da: co rzucić, żeby zostawić sobie
+   wynik, z którego następnym razem JEST wyjście (i nie jest to bogey). */
+function setupShot(n, dartsLeft){
+  let best = null;
+  for (const f of FIELDS){
+    const r = n - f.p;
+    if (r < 2 || BOGEY.has(r)) continue;
+    const o = outs(r, 3)[0];
+    if (!o) continue;
+    // najlepiej zostawić sobie wynik, z którego wychodzi się jak najmniejszą liczbą lotek
+    const here = dartsLeft > 1 && checkout(r, dartsLeft-1) ? 5000 : 0;
+    const s = here + (4-o.path.length)*1000 + ease(f);
+    if (!best || s > best.s) best = {s, thr:f.l, rest:r, out:o.path};
+  }
+  if (best) return best;
+  // wynik tak wysoki, że po jednej lotce i tak nie będzie wyjścia — zbijaj punkty
+  for (const f of FIELDS){
+    const r = n - f.p;
+    if (r < 2 || BOGEY.has(r)) continue;
+    if (!best || f.p > best.pts) best = {pts:f.p, thr:f.l, rest:r, out:null};
+  }
+  return best;
 }
 
 /* ════════════════════════════════════════════════
@@ -583,16 +643,9 @@ function gRender(bust, shown){
   });
 
   // podpowiedź wyjścia dla aktywnego gracza
-  const co = document.getElementById('co'), coV = document.getElementById('coV');
   const p = cur();
   const dartsLeft = 3 - G.round.length;
-  const path = G.done ? null : (G.dbl ? checkout(p.score, dartsLeft) : straightOut(p.score, dartsLeft));
-  if (path){ co.className='co'; coV.textContent = path.join('   '); }
-  else {
-    co.className='co none';
-    coV.textContent = G.done ? 'koniec meczu'
-      : p.score>170 ? 'zejdź poniżej 170' : 'z tego wyniku nie ma wyjścia w tej turze';
-  }
+  renderCheckout(p, dartsLeft);
 
   const sum = (shown||G.round).reduce((a,t)=>a+t.pts,0);
   pips(document.getElementById('gRound'), shown||G.round,
@@ -605,6 +658,98 @@ function gRender(bust, shown){
   });
   document.getElementById('gUndo').disabled = !G.log.length && !G.round.length;
 }
+
+/* ---------- pasek „jak skończyć" ---------- */
+let coState = null;   // co pokazać po tapnięciu w pasek
+
+function renderCheckout(p, dartsLeft){
+  const co = document.getElementById('co');
+  const K = document.getElementById('coK'), V = document.getElementById('coV'), M = document.getElementById('coMore');
+
+  if (G.done){
+    co.className='co none'; K.textContent='Wyjście'; V.textContent='koniec meczu'; M.textContent='';
+    coState = null; return;
+  }
+
+  const list = G.dbl ? outs(p.score, dartsLeft)
+                     : (straightOut(p.score, dartsLeft) ? [{path:straightOut(p.score, dartsLeft)}] : []);
+
+  if (list.length){
+    co.className='co';
+    K.textContent = 'Wyjście';
+    V.textContent = list[0].path.join('   ');
+    M.textContent = list.length>1 ? '+'+(list.length-1)+' inne ›' : '›';
+    coState = {kind:'out', score:p.score, darts:dartsLeft, list};
+    return;
+  }
+
+  // w tej turze nie skończysz — podpowiedz, co zostawić sobie na następną
+  const su = G.dbl ? setupShot(p.score, dartsLeft) : null;
+  if (su){
+    co.className='co setup';
+    K.textContent = 'Rzuć';
+    V.textContent = su.thr + ' → zostanie ' + su.rest;
+    M.textContent = '›';
+    coState = {kind:'setup', score:p.score, darts:dartsLeft, su};
+  } else {
+    co.className='co none';
+    K.textContent = 'Wyjście';
+    V.textContent = BOGEY.has(p.score) ? p.score+' — z tego wyniku nie ma wyjścia' : 'jeszcze za wysoko';
+    M.textContent = '›';
+    coState = {kind:'none', score:p.score, darts:dartsLeft};
+  }
+}
+
+const fieldChips = path => path.map((l,i)=>
+  '<div class="f'+(i===path.length-1?' dbl':'')+'">'+l+'</div>').join('');
+
+document.getElementById('co').onclick = ()=>{
+  if (!coState) return;
+  const b = document.getElementById('outsBody');
+  const st = coState;
+  let h = '<div style="text-align:center;padding:10px 0 4px">'
+        + '<div class="big-n">'+st.score+'</div>'
+        + '<div class="hint" style="padding:4px 0 0">zostało · w tej turze masz '
+        + st.darts+' '+(st.darts===1?'lotkę':st.darts===2?'lotki':'lotki')+'</div></div>';
+
+  if (st.kind === 'out'){
+    h += '<div class="wayhd">Jak skończyć ('+st.list.length+' '
+       + (st.list.length===1?'sposób':st.list.length<5?'sposoby':'sposobów')+')</div>';
+    h += st.list.map((o,i)=>
+      '<div class="way'+(i===0?' best':'')+'"><div class="d">'+fieldChips(o.path)+'</div>'
+      + '<div class="c">'+o.path.length+' '+(o.path.length===1?'lotka':'lotki')+'</div></div>').join('');
+    h += '<div class="hint">Ostatnie pole (bursztynowe) musi być double — inaczej rzut się nie liczy i tracisz turę.</div>';
+  }
+
+  if (st.kind === 'setup'){
+    h += '<div class="wayhd">W tej turze nie skończysz</div>'
+       + '<div class="way best"><div class="d">'+fieldChips([st.su.thr])
+       + '</div><div class="c">zostanie '+st.su.rest+'</div></div>'
+       + (st.su.out
+          ? '<div class="wayhd">Wtedy w następnej turze</div>'
+            + '<div class="way"><div class="d">'+fieldChips(st.su.out)+'</div>'
+            + '<div class="c">'+st.su.out.length+' lotki</div></div>'
+          : '<div class="hint" style="padding-top:2px">Do wyjścia jeszcze daleko — zbijaj punkty, '
+            + 'podpowiedź jak skończyć pojawi się poniżej 170.</div>')
+       + '<div class="hint">Chodzi o to, żeby nie zostać na wyniku, z którego nie ma wyjścia.</div>';
+  }
+
+  if (st.kind === 'none'){
+    h += '<div class="wayhd">Brak wyjścia w tej turze</div>'
+       + '<div class="hint" style="padding-top:2px">'
+       + (BOGEY.has(st.score)
+          ? 'Z '+st.score+' nie da się wyjść nawet trzema lotkami. Rzuć tak, żeby zejść na wynik z wyjściem.'
+          : 'Zbijaj punkty — podpowiedź pojawi się, gdy zejdziesz na wynik, z którego można skończyć.')
+       + '</div>';
+  }
+
+  h += '<div class="wayhd">Wyniki bez wyjścia</div>'
+     + '<div class="hint" style="padding-top:2px">169 · 168 · 166 · 165 · 163 · 162 · 159 '
+     + '— na żadnym z nich nie da się skończyć trzema lotkami. Nie zostawiaj ich sobie.</div>';
+
+  b.innerHTML = h;
+  sheet('shOuts', true);
+};
 
 /* wyjście bez wymogu double (tryb „dowolne") */
 function straightOut(n, maxDarts){

@@ -12,7 +12,12 @@ i masz appkę — bez App Store, bez konta, bez reklam. Działa offline.
 - Legi — do 1, 2, 3 lub 5 wygranych
 - Duże liczby „ile zostało", aktywny gracz podświetlony
 - **Podpowiedź wyjścia** — gdy zejdziesz do 170 lub niżej, appka pokazuje jak
-  skończyć, i przelicza ją po każdej lotce
+  skończyć, i przelicza ją po każdej lotce. Tapnij w pasek, żeby zobaczyć
+  **wszystkie możliwe drogi** (przy 110 jest ich 12) — dla każdej widać, ile
+  potrzeba lotek i na którym double kończysz
+- **Gdy w tej turze nie skończysz** — pasek zmienia się w podpowiedź co rzucić,
+  żeby zostawić sobie wynik, z którego następnym razem JEST wyjście. Nigdy nie
+  proponuje wyniku bez wyjścia (169, 168, 166, 165, 163, 162, 159)
 - **Przekroczenie** (bust) wg reguł: poniżej zera, zostanie 1, albo zero bez
   double → runda anulowana, wynik wraca
 - Statystyki: średnia na 3 lotki, najwyższy rzut, liczba 180
