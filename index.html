@@ -308,6 +308,10 @@ input{font:inherit;color:inherit}
     <button class="alt" id="mStats">Statystyki meczu</button>
     <button class="alt" id="mQuit" style="color:var(--bad)">Zakończ mecz i wróć</button>
     <div class="hint">Cofnij (na dole ekranu) usuwa ostatnią lotkę — działa też po zmianie gracza.</div>
+    <div class="sect" style="margin-top:18px">Głos xAI (opcjonalnie)</div>
+    <div class="pl"><input id="mXaiKey" placeholder="xai-..." style="font-size:13px"></div>
+    <div class="hint" style="padding-top:4px">Wyraźnie lepszy głos niż systemowy. Klucz z console.x.ai,
+      płatne grosze za odczyt. Puste pole = zwykły głos telefonu, appka działa tak samo.</div>
   </div>
 </div>
 
@@ -497,14 +501,39 @@ if ('speechSynthesis' in window){
   pickVoice();
   speechSynthesis.onvoiceschanged = pickVoice;
 }
-function speak(text){
-  if (!cfg.voice || !('speechSynthesis' in window)) return;
+/* xAI TTS — opcjonalny, lepszy głos. Zweryfikowane 2026-08-10: nawet Zosia
+   (rozszerzony)/Enhanced, najlepsza dostępna natywnie, dalej brzmi słabo po
+   polsku — to nie błąd doboru głosu, to sufit jakości Apple TTS dla pl-PL.
+   Klucz trzyma się WYŁĄCZNIE w localStorage usera (pole w Menu), nigdy w repo. */
+let xaiAudio = null;
+async function speakXAI(text){
+  const r = await fetch('https://api.x.ai/v1/tts', {
+    method: 'POST',
+    headers: {'Authorization':'Bearer '+cfg.xaiKey, 'Content-Type':'application/json'},
+    body: JSON.stringify({text, voice_id:'eve', language:'pl'})
+  });
+  if (!r.ok) throw new Error('xAI TTS HTTP '+r.status);
+  const blob = await r.blob();
+  if (xaiAudio) xaiAudio.pause();
+  xaiAudio = new Audio(URL.createObjectURL(blob));
+  await xaiAudio.play();
+}
+function speakNative(text){
+  if (!('speechSynthesis' in window)) return;
   speechSynthesis.cancel(); // nie nakładaj zapowiedzi na siebie przy szybkiej grze
   const u = new SpeechSynthesisUtterance(text);
   u.lang = 'pl-PL';
   if (plVoice) u.voice = plVoice;
   u.rate = 1; // szybsze tempo na słabszym (Compact) głosie brzmiało bełkotliwie
   speechSynthesis.speak(u);
+}
+async function speak(text){
+  if (!cfg.voice) return;
+  if (cfg.xaiKey){
+    try { await speakXAI(text); return; }
+    catch(e){ console.warn('xAI TTS padło, wracam do głosu systemowego:', e); }
+  }
+  speakNative(text);
 }
 
 function seg(id, key){
@@ -854,6 +883,10 @@ document.getElementById('gVoice').onclick = ()=>{
   if (cfg.voice) speak('Głos włączony.');
 };
 renderVoiceBtn();
+
+const mXaiKey = document.getElementById('mXaiKey');
+mXaiKey.value = cfg.xaiKey || '';
+mXaiKey.oninput = ()=>{ cfg.xaiKey = mXaiKey.value.trim(); saveCfg(); };
 
 document.getElementById('gMenu').onclick = ()=> sheet('shMenu', true);
 document.getElementById('mQuit').onclick = ()=>{ sheet('shMenu',false); show('scHome'); };
