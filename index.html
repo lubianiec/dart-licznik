@@ -807,9 +807,6 @@ const esc = s => String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&
    (setTimeout w gBust czyści rundę niezależnie), nie warto tego dłubać dalej. */
 document.getElementById('gJoke26').onclick = ()=>{
   [1,5,20].forEach(n=>{ if (!G.done && G.round.length<3) gThrow(n,1); });
-  // speak() ostatni wygrywa (cancel()+speak() w środku) — to nadpisuje
-  // normalny odczyt "26. Zostało X." wywołany przez endTurn() powyżej.
-  speak('Ohh yes!');
 };
 
 /* ---------- cofanie ---------- */
