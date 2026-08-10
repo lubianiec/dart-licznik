@@ -308,10 +308,10 @@ input{font:inherit;color:inherit}
     <button class="alt" id="mStats">Statystyki meczu</button>
     <button class="alt" id="mQuit" style="color:var(--bad)">Zakończ mecz i wróć</button>
     <div class="hint">Cofnij (na dole ekranu) usuwa ostatnią lotkę — działa też po zmianie gracza.</div>
-    <div class="sect" style="margin-top:18px">Głos xAI (opcjonalnie)</div>
-    <div class="pl"><input id="mXaiKey" placeholder="xai-..." style="font-size:13px"></div>
-    <div class="hint" style="padding-top:4px">Wyraźnie lepszy głos niż systemowy. Klucz z console.x.ai,
-      płatne grosze za odczyt. Puste pole = zwykły głos telefonu, appka działa tak samo.</div>
+    <div class="sect" style="margin-top:18px">Głos ElevenLabs (opcjonalnie)</div>
+    <div class="pl"><input id="mXaiKey" placeholder="klucz API..." style="font-size:13px"></div>
+    <div class="hint" style="padding-top:4px">Naturalny polski głos, nie systemowy Zosia. Klucz z elevenlabs.io
+      (Profile → API Keys), płatne grosze za odczyt. Puste pole = zwykły głos telefonu, appka działa tak samo.</div>
   </div>
 </div>
 
@@ -501,22 +501,24 @@ if ('speechSynthesis' in window){
   pickVoice();
   speechSynthesis.onvoiceschanged = pickVoice;
 }
-/* xAI TTS — opcjonalny, lepszy głos. Zweryfikowane 2026-08-10: nawet Zosia
-   (rozszerzony)/Enhanced, najlepsza dostępna natywnie, dalej brzmi słabo po
-   polsku — to nie błąd doboru głosu, to sufit jakości Apple TTS dla pl-PL.
-   Klucz trzyma się WYŁĄCZNIE w localStorage usera (pole w Menu), nigdy w repo. */
-let xaiAudio = null;
-async function speakXAI(text){
-  const r = await fetch('https://api.x.ai/v1/tts', {
+/* ElevenLabs TTS — opcjonalny, lepszy głos. Wypróbowane xAI 2026-08-10: polski
+   NIE jest w ich oficjalnej liście 20 języków (dokumentacja x.ai wprost: "dodatkowe
+   języki, różny poziom dokładności") — stąd akcent. ElevenLabs multilingual_v2
+   trenowany na polskim natywnie, jeden z ich mocniejszych języków (zweryfikowane
+   w dokumentacji + recenzjach 2026-08-10). Klucz WYŁĄCZNIE w localStorage usera. */
+let elAudio = null;
+const EL_VOICE = '21m00Tcm4TlvDq8ikWAM'; // "Rachel" — stabilny, publiczny domyślny głos ElevenLabs
+async function speakElevenLabs(text){
+  const r = await fetch('https://api.elevenlabs.io/v1/text-to-speech/'+EL_VOICE, {
     method: 'POST',
-    headers: {'Authorization':'Bearer '+cfg.xaiKey, 'Content-Type':'application/json'},
-    body: JSON.stringify({text, voice_id:'eve', language:'pl'})
+    headers: {'xi-api-key':cfg.elKey, 'Content-Type':'application/json'},
+    body: JSON.stringify({text, model_id:'eleven_multilingual_v2'})
   });
-  if (!r.ok) throw new Error('xAI TTS HTTP '+r.status);
+  if (!r.ok) throw new Error('ElevenLabs TTS HTTP '+r.status);
   const blob = await r.blob();
-  if (xaiAudio) xaiAudio.pause();
-  xaiAudio = new Audio(URL.createObjectURL(blob));
-  await xaiAudio.play();
+  if (elAudio) elAudio.pause();
+  elAudio = new Audio(URL.createObjectURL(blob));
+  await elAudio.play();
 }
 function speakNative(text){
   if (!('speechSynthesis' in window)) return;
@@ -529,9 +531,9 @@ function speakNative(text){
 }
 async function speak(text){
   if (!cfg.voice) return;
-  if (cfg.xaiKey){
-    try { await speakXAI(text); return; }
-    catch(e){ console.warn('xAI TTS padło, wracam do głosu systemowego:', e); }
+  if (cfg.elKey){
+    try { await speakElevenLabs(text); return; }
+    catch(e){ console.warn('ElevenLabs TTS padło, wracam do głosu systemowego:', e); }
   }
   speakNative(text);
 }
@@ -885,8 +887,8 @@ document.getElementById('gVoice').onclick = ()=>{
 renderVoiceBtn();
 
 const mXaiKey = document.getElementById('mXaiKey');
-mXaiKey.value = cfg.xaiKey || '';
-mXaiKey.oninput = ()=>{ cfg.xaiKey = mXaiKey.value.trim(); saveCfg(); };
+mXaiKey.value = cfg.elKey || '';
+mXaiKey.oninput = ()=>{ cfg.elKey = mXaiKey.value.trim(); saveCfg(); };
 
 document.getElementById('gMenu').onclick = ()=> sheet('shMenu', true);
 document.getElementById('mQuit').onclick = ()=>{ sheet('shMenu',false); show('scHome'); };
