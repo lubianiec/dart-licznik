@@ -7,7 +7,7 @@
 // service workera) — więc network-first czasem po cichu zwracał odpowiedź
 // sprzed 10 minut, nie prawdziwie świeżą. `cache:'no-store'` wymusza
 // pominięcie warstwy HTTP cache, zostaje tylko nasz jawny Cache API niżej.
-const C = 'dart-v3';
+const C = 'dart-v4'; // bump = wymusza skasowanie starego cache u wszystkich (2026-08-10, bug głosu ElevenLabs)
 const FILES = ['./', './index.html', './manifest.json', './icon.png', './icon-180.png'];
 
 self.addEventListener('install', e => {
