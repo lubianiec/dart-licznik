@@ -310,10 +310,9 @@ input{font:inherit;color:inherit}
     <div class="hint">Cofnij (na dole ekranu) usuwa ostatnią lotkę — działa też po zmianie gracza.</div>
     <div class="sect" style="margin-top:18px">Głos ElevenLabs (opcjonalnie)</div>
     <div class="pl"><input id="mXaiKey" placeholder="klucz API..." style="font-size:13px"></div>
-    <div class="pl" style="margin-top:6px"><input id="mProxyUrl" placeholder="https://xxx.workers.dev (proxy CORS)" style="font-size:13px"></div>
     <div class="hint" style="padding-top:4px">Naturalny polski głos, nie systemowy Zosia. Klucz z elevenlabs.io
-      (Profile → API Keys). ElevenLabs blokuje wywołania wprost z przeglądarki — drugie pole to URL
-      Twojego darmowego Cloudflare Workera (patrz <code>cloudflare-worker.js</code> w repo). Puste = zwykły głos telefonu.</div>
+      (Profile → API Keys), płatne grosze za odczyt. Puste pole = zwykły głos telefonu, appka działa tak samo.
+      Błąd (zły klucz, limit) → ikonka głośnika na chwilę zrobi się czerwona, appka i tak przeczyta wynik zwykłym głosem.</div>
   </div>
 </div>
 
@@ -506,21 +505,23 @@ if ('speechSynthesis' in window){
 /* ElevenLabs TTS — opcjonalny, lepszy głos. Wypróbowane xAI 2026-08-10: polski
    NIE jest w ich oficjalnej liście 20 języków (dokumentacja x.ai wprost: "dodatkowe
    języki, różny poziom dokładności") — stąd akcent. ElevenLabs multilingual_v2
-   trenowany na polskim natywnie, jeden z ich mocniejszych języków (zweryfikowane
-   w dokumentacji + recenzjach 2026-08-10).
-   ElevenLabs BLOKUJE wywołania wprost z przeglądarki (brak CORS, zweryfikowane) —
-   stąd `cfg.proxyUrl`, mały Cloudflare Worker (patrz cloudflare-worker.js) który
-   tylko dokleja nagłówki CORS. Klucz WYŁĄCZNIE w localStorage usera, Worker go
-   nie przechowuje, tylko przekazuje dalej. */
+   trenowany na polskim natywnie, jeden z ich mocniejszych języków.
+   Wywołanie WPROST z przeglądarki, bez proxy — zweryfikowane curlem 2026-08-10:
+   `access-control-allow-origin: *` na realnym endpoincie /v1/text-to-speech,
+   ElevenLabs CORS obsługuje. (Wcześniejsze podejście z Cloudflare Workerem było
+   błędem — zaufałem artykułom zamiast sprawdzić samemu, cofnięte.) */
 let elAudio = null;
 const EL_VOICE = '21m00Tcm4TlvDq8ikWAM'; // "Rachel" — stabilny, publiczny domyślny głos ElevenLabs
 async function speakElevenLabs(text){
-  const r = await fetch(cfg.proxyUrl+'?voice='+EL_VOICE, {
+  const r = await fetch('https://api.elevenlabs.io/v1/text-to-speech/'+EL_VOICE, {
     method: 'POST',
     headers: {'xi-api-key':cfg.elKey, 'Content-Type':'application/json'},
     body: JSON.stringify({text, model_id:'eleven_multilingual_v2'})
   });
-  if (!r.ok) throw new Error('ElevenLabs TTS HTTP '+r.status);
+  if (!r.ok){
+    const body = await r.text().catch(()=>'');
+    throw new Error('HTTP '+r.status+' '+body.slice(0,200));
+  }
   const blob = await r.blob();
   if (elAudio) elAudio.pause();
   elAudio = new Audio(URL.createObjectURL(blob));
@@ -537,11 +538,24 @@ function speakNative(text){
 }
 async function speak(text){
   if (!cfg.voice) return;
-  if (cfg.elKey && cfg.proxyUrl){
+  if (cfg.elKey){
     try { await speakElevenLabs(text); return; }
-    catch(e){ console.warn('ElevenLabs TTS padło, wracam do głosu systemowego:', e); }
+    catch(e){
+      // Widoczny błąd w appce zamiast tylko w konsoli — żeby nie zgadywać
+      // drugi raz z rzędu co poszło nie tak (lekcja z 2026-08-10).
+      showVoiceError(e.message);
+      console.warn('ElevenLabs TTS padło, wracam do głosu systemowego:', e);
+    }
   }
   speakNative(text);
+}
+let voiceErrTimer = null;
+function showVoiceError(msg){
+  const b = document.getElementById('gVoice');
+  b.style.color = 'var(--bad)';
+  b.title = 'ElevenLabs: ' + msg;
+  clearTimeout(voiceErrTimer);
+  voiceErrTimer = setTimeout(renderVoiceBtn, 6000);
 }
 
 function seg(id, key){
@@ -895,10 +909,6 @@ renderVoiceBtn();
 const mXaiKey = document.getElementById('mXaiKey');
 mXaiKey.value = cfg.elKey || '';
 mXaiKey.oninput = ()=>{ cfg.elKey = mXaiKey.value.trim(); saveCfg(); };
-
-const mProxyUrl = document.getElementById('mProxyUrl');
-mProxyUrl.value = cfg.proxyUrl || '';
-mProxyUrl.oninput = ()=>{ cfg.proxyUrl = mProxyUrl.value.trim().replace(/\/$/,''); saveCfg(); };
 
 document.getElementById('gMenu').onclick = ()=> sheet('shMenu', true);
 document.getElementById('mQuit').onclick = ()=>{ sheet('shMenu',false); show('scHome'); };
