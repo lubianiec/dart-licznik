@@ -487,11 +487,13 @@ let cfg = Object.assign({start:501, dbl:1, legs:1, names:['Gracz 1','Gracz 2'], 
 let plVoice = null;
 function pickVoice(){
   if (!('speechSynthesis' in window)) return;
-  const voices = speechSynthesis.getVoices();
-  // "Compact" na iOS to najsłabsza jakościowo — bierz lepszy polski głos jeśli jest.
-  plVoice = voices.find(v=>v.lang==='pl-PL' && !/compact/i.test(v.name))
-         || voices.find(v=>v.lang && v.lang.startsWith('pl'))
-         || null;
+  const pl = speechSynthesis.getVoices().filter(v=>v.lang && v.lang.toLowerCase().startsWith('pl'));
+  // iOS/macOS ma domyślnie tylko "Compact" (robotyczny) — jeśli user pobrał
+  // lepszy głos (Ustawienia → Dostępność → Zawartość mówiona → Głosy → Polski
+  // → Premium/Enhanced), appka go automatycznie wybierze zamiast domyślnego.
+  const rank = v => /premium/i.test(v.name) ? 3 : /enhanced/i.test(v.name) ? 2
+             : /compact/i.test(v.name) ? 0 : 1;
+  plVoice = pl.sort((a,b)=>rank(b)-rank(a))[0] || null;
 }
 if ('speechSynthesis' in window){
   pickVoice();
@@ -503,7 +505,7 @@ function speak(text){
   const u = new SpeechSynthesisUtterance(text);
   u.lang = 'pl-PL';
   if (plVoice) u.voice = plVoice;
-  u.rate = 1.03;
+  u.rate = 1; // szybsze tempo na słabszym (Compact) głosie brzmiało bełkotliwie
   speechSynthesis.speak(u);
 }
 
