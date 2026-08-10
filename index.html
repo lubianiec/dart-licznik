@@ -511,7 +511,11 @@ if ('speechSynthesis' in window){
    ElevenLabs CORS obsługuje. (Wcześniejsze podejście z Cloudflare Workerem było
    błędem — zaufałem artykułom zamiast sprawdzić samemu, cofnięte.) */
 let elAudio = null;
-const EL_VOICE = '21m00Tcm4TlvDq8ikWAM'; // "Rachel" — stabilny, publiczny domyślny głos ElevenLabs
+// 2026-08-10: "Rachel" brzmiała obco po polsku — to głos natywnie angielski,
+// multilingual_v2 nakłada na niego polski tekst ale barwa/akcent aktorki
+// się przebija. Zamieniono na "Hanna" — natywnie polski głos z community
+// voice library (trzeba dodać do konta ElevenLabs, patrz komunikat błędu w UI).
+const EL_VOICE = 'NacdHGUYR1k3M0FAbAia'; // "Hanna" — natywny polski głos, kobiecy, spokojny
 async function speakElevenLabs(text){
   const r = await fetch('https://api.elevenlabs.io/v1/text-to-speech/'+EL_VOICE, {
     method: 'POST',
