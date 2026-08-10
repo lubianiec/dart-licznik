@@ -1044,6 +1044,23 @@ document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==
 document.body.addEventListener('click', keepAwake, {once:true});
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+/* Samoleczenie starej wersji w cache przeglądarki, 2026-08-10: SW sam się
+   aktualizuje w teorii, ale w praktyce (Paweł, Mac) potrafił utknąć na
+   starej wersji mimo zamykania kart. To wymusza JEDNORAZOWO twardy reload
+   z cache-busterem, jeśli appka wykryje że jej własna wersja jest stara —
+   nie wymaga żadnej interwencji użytkownika (dev tools, Cmd+Q, ręczny ?v=). */
+const APP_VER = 'v4-maria-voice';
+if (localStorage.getItem('appVer') !== APP_VER){
+  localStorage.setItem('appVer', APP_VER);
+  if ('serviceWorker' in navigator){
+    navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister()));
+  }
+  if ('caches' in window){
+    caches.keys().then(ks => Promise.all(ks.map(k => caches.delete(k))));
+  }
+  location.replace(location.pathname + '?fresh=' + Date.now());
+}
 </script>
 </body>
 </html>
