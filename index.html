@@ -141,6 +141,13 @@ input{font:inherit;color:inherit}
 .s:active{background:var(--panel-2)}
 .s.mult.on{background:var(--accent);border-color:var(--accent);color:#16181c}
 .s.miss:active{background:var(--miss);border-color:var(--miss);color:var(--txt)}
+.joke26{
+  width:100%;height:38px;border-radius:10px;background:var(--panel);
+  border:1px dashed var(--line);color:var(--accent);font-size:14px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.joke26 span{color:var(--dim);font-size:11px;font-weight:400}
+.joke26:active{border-color:var(--accent);background:var(--panel-2)}
 .acts{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .mini{height:40px;border-radius:10px;background:var(--panel);border:1px solid var(--line);font-size:14px;color:var(--dim)}
 .mini:active{background:var(--panel-2);color:var(--txt)}
@@ -239,6 +246,7 @@ input{font:inherit;color:inherit}
       <button class="s" data-b="50">BULL</button>
       <button class="s miss" data-b="0">PUDŁO</button>
     </div>
+    <button class="joke26" id="gJoke26">26 <span>· klasyk amatora: 1 + 5 + 20</span></button>
     <div class="acts">
       <button class="mini" id="gUndo">↩ Cofnij</button>
       <button class="mini" id="gEnd">■ Zakończ turę</button>
@@ -790,6 +798,16 @@ function straightOut(n, maxDarts){
 }
 
 const esc = s => String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- 26 = klasyk amatora (1 + 5 + 20) — żarcik Pawła, wsadza 3 lotki
+   przez ten sam gThrow() co normalny input, więc liczy się identycznie
+   (bust/checkout/głos działają bez zmian). Guard na round.length<3 i !G.done
+   między rzutami, żeby nie dosypać lotki po buście w środku sekwencji —
+   ponytail: edge case przy niskim wyniku i tak samo-naprawia się po 1.1s
+   (setTimeout w gBust czyści rundę niezależnie), nie warto tego dłubać dalej. */
+document.getElementById('gJoke26').onclick = ()=>{
+  [1,5,20].forEach(n=>{ if (!G.done && G.round.length<3) gThrow(n,1); });
+};
 
 /* ---------- cofanie ---------- */
 document.getElementById('gUndo').onclick = ()=>{
