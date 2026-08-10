@@ -906,10 +906,13 @@ function renderVoiceBtn(){
   b.innerHTML = cfg.voice ? SPK_ON : SPK_OFF;
   b.style.color = cfg.voice ? '' : 'var(--dim)';
 }
-document.getElementById('gVoice').onclick = ()=>{
-  cfg.voice = cfg.voice ? 0 : 1; saveCfg(); renderVoiceBtn();
-  if (cfg.voice) speak('Głos włączony.');
-};
+// 2026-08-10: głos WYŁĄCZONY na razie — cały dzień szukania dobrego polskiego
+// TTS (ElevenLabs community voices, lokalny Piper WASM) zakończony bez wyniku,
+// Paweł chce wrócić do tematu innym razem z Azure Neural (Agnieszka/Marek,
+// linia Ivony — patrz memory dart-licznik.md). Kod ElevenLabs zostaje
+// nietknięty pod spodem, tylko przycisk jest wyłączony.
+cfg.voice = 0; saveCfg();
+document.getElementById('gVoice').style.display = 'none';
 renderVoiceBtn();
 
 const mXaiKey = document.getElementById('mXaiKey');
@@ -1050,7 +1053,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catc
    starej wersji mimo zamykania kart. To wymusza JEDNORAZOWO twardy reload
    z cache-busterem, jeśli appka wykryje że jej własna wersja jest stara —
    nie wymaga żadnej interwencji użytkownika (dev tools, Cmd+Q, ręczny ?v=). */
-const APP_VER = 'v4-maria-voice';
+const APP_VER = 'v5-voice-disabled';
 if (localStorage.getItem('appVer') !== APP_VER){
   localStorage.setItem('appVer', APP_VER);
   if ('serviceWorker' in navigator){
