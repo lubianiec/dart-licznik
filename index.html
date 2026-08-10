@@ -25,7 +25,10 @@ body{
   max-width:480px;margin:0 auto;
   padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
-button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;font-variant-numeric:tabular-nums;
+  transition:transform .08s ease,background-color .08s ease,border-color .08s ease}
+button:active{transform:scale(.96)}
+@media (prefers-reduced-motion:reduce){ button{transition:none} button:active{transform:none} }
 input{font:inherit;color:inherit}
 .screen{display:none;flex-direction:column;flex:1;min-height:0}
 .screen.on{display:flex}
@@ -201,11 +204,6 @@ input{font:inherit;color:inherit}
       <button data-v="301">301</button><button data-v="501" class="on">501</button><button data-v="701">701</button>
     </div>
 
-    <div class="sect">Wyjście</div>
-    <div class="seg" id="segOut">
-      <button data-v="1" class="on">Na double</button><button data-v="0">Dowolne</button>
-    </div>
-
     <div class="sect">Do ilu wygranych legów</div>
     <div class="seg" id="segLegs">
       <button data-v="1" class="on">1</button><button data-v="2">2</button><button data-v="3">3</button><button data-v="5">5</button>
@@ -224,7 +222,8 @@ input{font:inherit;color:inherit}
 <div class="screen" id="scGame">
   <div class="top">
     <div class="ttl"><b id="gTitle">501</b> <span id="gLeg"></span></div>
-    <button class="icon" id="gMenu">☰</button>
+    <button class="icon" id="gVoice"></button>
+    <button class="icon" id="gMenu"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg></button>
   </div>
   <div class="board" id="board"></div>
   <button class="co" id="co">
@@ -252,7 +251,7 @@ input{font:inherit;color:inherit}
   <div class="top">
     <button class="icon" id="tBack">‹</button>
     <div class="ttl" style="flex:1"><b>Trening celności</b></div>
-    <button class="icon" id="tHist">☰</button>
+    <button class="icon" id="tHist"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg></button>
   </div>
   <div style="padding:0 12px 4px">
     <button class="p" id="pickTarget" style="width:100%;justify-content:space-between">
@@ -472,8 +471,33 @@ const sheet = (id,on)=> document.getElementById(id).classList.toggle('on', on);
    EKRAN STARTOWY
    ════════════════════════════════════════════════ */
 const CFG = 'dart-cfg';
-let cfg = Object.assign({start:501, dbl:1, legs:1, names:['Gracz 1','Gracz 2']},
+let cfg = Object.assign({start:501, dbl:1, legs:1, names:['Gracz 1','Gracz 2'], voice:1},
                         JSON.parse(localStorage.getItem(CFG) || '{}'));
+
+/* ---------- głos: czyta wynik rundy i ile zostało (Web Speech API,
+   natywne w Safari/iOS, zero zależności, działa offline) ---------- */
+let plVoice = null;
+function pickVoice(){
+  if (!('speechSynthesis' in window)) return;
+  const voices = speechSynthesis.getVoices();
+  // "Compact" na iOS to najsłabsza jakościowo — bierz lepszy polski głos jeśli jest.
+  plVoice = voices.find(v=>v.lang==='pl-PL' && !/compact/i.test(v.name))
+         || voices.find(v=>v.lang && v.lang.startsWith('pl'))
+         || null;
+}
+if ('speechSynthesis' in window){
+  pickVoice();
+  speechSynthesis.onvoiceschanged = pickVoice;
+}
+function speak(text){
+  if (!cfg.voice || !('speechSynthesis' in window)) return;
+  speechSynthesis.cancel(); // nie nakładaj zapowiedzi na siebie przy szybkiej grze
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'pl-PL';
+  if (plVoice) u.voice = plVoice;
+  u.rate = 1.03;
+  speechSynthesis.speak(u);
+}
 
 function seg(id, key){
   const host = document.getElementById(id);
@@ -512,7 +536,7 @@ function renderPlayers(){
 document.getElementById('addP').onclick = ()=>{
   if (cfg.names.length<4){ cfg.names.push('Gracz '+(cfg.names.length+1)); saveCfg(); renderPlayers(); }
 };
-seg('segStart','start'); seg('segOut','dbl'); seg('segLegs','legs'); renderPlayers();
+seg('segStart','start'); seg('segLegs','legs'); renderPlayers();
 
 document.getElementById('goTrain').onclick = ()=>{ show('scTrain'); tRender(); };
 document.getElementById('tBack').onclick   = ()=> show('scHome');
@@ -525,7 +549,7 @@ let G = null;
 
 function newMatch(){
   G = {
-    start: cfg.start, dbl: !!cfg.dbl, need: cfg.legs,
+    start: cfg.start, dbl: false, need: cfg.legs,
     players: cfg.names.map((n,i)=>({
       name: (n||'').trim() || 'Gracz '+(i+1),
       score: cfg.start, legs:0, darts:0, scored:0, best:0, n180:0
@@ -573,6 +597,7 @@ function endTurn(){
   if (sum > p.best) p.best = sum;
   if (sum === 180) p.n180++;
   G.log.push({pi:G.turn, round:G.round.slice(), before:G.before, bust:false});
+  speak(sum + '. Zostało ' + p.score + '.');
   G.round = [];
   G.turn = (G.turn+1) % G.players.length;
   G.before = cur().score;
@@ -584,6 +609,7 @@ function gBust(){
   const shown = G.round.slice();
   p.score = G.before;                        // wynik wraca
   G.log.push({pi:G.turn, round:shown, before:G.before, bust:true});
+  speak('Bust. Zostaje ' + G.before + '.');
   gRender(true, shown);
   setTimeout(()=>{
     G.round = [];
@@ -604,6 +630,7 @@ function gLegWon(){
   G.round = [];
 
   const matchOver = p.legs >= G.need;
+  speak(matchOver ? 'Checkout! Wygrywa ' + p.name + '.' : 'Checkout! Koniec lega.');
   showWin(p, matchOver);
 
   if (matchOver){ G.done = true; }
@@ -621,7 +648,7 @@ function gLegWon(){
 function gRender(bust, shown){
   document.getElementById('gTitle').textContent = G.start;
   document.getElementById('gLeg').textContent =
-    (G.need>1 ? '· leg '+G.leg+' (do '+G.need+')' : '') + (G.dbl ? ' · na double' : '');
+    (G.need>1 ? '· leg '+G.leg+' (do '+G.need+')' : '');
 
   const board = document.getElementById('board');
   board.className = 'board' + (G.players.length >= 3 ? ' dense' : '');
@@ -718,7 +745,6 @@ document.getElementById('co').onclick = ()=>{
     h += st.list.map((o,i)=>
       '<div class="way'+(i===0?' best':'')+'"><div class="d">'+fieldChips(o.path)+'</div>'
       + '<div class="c">'+o.path.length+' '+(o.path.length===1?'lotka':'lotki')+'</div></div>').join('');
-    h += '<div class="hint">Ostatnie pole (bursztynowe) musi być double — inaczej rzut się nie liczy i tracisz turę.</div>';
   }
 
   if (st.kind === 'setup'){
@@ -797,6 +823,19 @@ document.getElementById('gEnd').onclick = ()=>{
   while (G.round.length < 3) { G.round.push({num:0,mult:1,pts:0,hit:false}); cur().darts++; }
   endTurn(); gRender();
 };
+
+const SPK_ON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>';
+const SPK_OFF = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>';
+function renderVoiceBtn(){
+  const b = document.getElementById('gVoice');
+  b.innerHTML = cfg.voice ? SPK_ON : SPK_OFF;
+  b.style.color = cfg.voice ? '' : 'var(--dim)';
+}
+document.getElementById('gVoice').onclick = ()=>{
+  cfg.voice = cfg.voice ? 0 : 1; saveCfg(); renderVoiceBtn();
+  if (cfg.voice) speak('Głos włączony.');
+};
+renderVoiceBtn();
 
 document.getElementById('gMenu').onclick = ()=> sheet('shMenu', true);
 document.getElementById('mQuit').onclick = ()=>{ sheet('shMenu',false); show('scHome'); };
